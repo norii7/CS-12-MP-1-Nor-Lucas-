@@ -1,1 +1,1 @@
-# manifesting passing grades this sem *fingers crossed*
+# manifesting passing grades this sem *[fingers crossed]*
