@@ -70,7 +70,6 @@ class App:
         
         self.obstacles: list[obstacles] = level1_obstacles
 
-        '''
         for _ in range(MAX_ENEMY_TANKS):
             rand_x = randint(0, WIDTH - TANK_SIDE)
             rand_y = randint(0, HEIGHT - TANK_SIDE)
@@ -82,7 +81,6 @@ class App:
                 rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']))
             
             self.enemyTanks.append(rand_tank)
-        '''
 
         pyxel.run(self.update, self.draw)
 
@@ -148,8 +146,8 @@ class App:
     def draw(self):
         pyxel.cls(0)
         pyxel.load('PYXEL_RESOURCE_FILE.pyxres')
-        #for tank in self.enemyTanks:
-        #    self.drawEnemyTank(tank.x, tank.y, tank.facing)
+        for tank in self.enemyTanks:
+            self.drawEnemyTank(tank.x, tank.y, tank.facing)
         for bul in self.bulletList:
             self.drawBullet(bul.x, bul.y)
         for obstacle in self.obstacles:
