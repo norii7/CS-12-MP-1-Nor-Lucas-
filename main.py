@@ -1,11 +1,15 @@
 import pyxel
 from dataclasses import dataclass
 from random import randint, choice
+from operator import xor
+from math import dist
 
+#global variables to easily change code when calibrating 
 FPS = 30
 HEIGHT = 120
 WIDTH = 165
-TANK_SIDE = 12
+TANK_HEIGHT = 12
+TANK_WIDTH  = 10
 TANK_SPEED = 1
 BULLET_SIDE = 2
 BULLET_SPEED = 5
@@ -17,18 +21,21 @@ class Tank:
     x: int
     y: int
     facing: str
-    side: int = TANK_SIDE
+    id: str
+    height: int = TANK_HEIGHT
+    width: int = TANK_WIDTH
 
 @dataclass
 class mainTank(Tank):
-    score: int = 0
+    lives: int = 3
 
 @dataclass
 class bullet:
     x: int
     y: int
-    shooter: str
+    origin: str
     direction: str
+    mirrored: bool = False
     side: int = BULLET_SIDE
 
 @dataclass
@@ -38,15 +45,7 @@ class obstacles:
     type: str
     side: int = OBSTACLE_SIDE
 
-class App:
-    def __init__(self):
-        pyxel.init(WIDTH, HEIGHT, fps=FPS)
-        self.x = 0
-        self.mainTank = mainTank(0, 0, 'n', 0)
-        self.bulletList: list[bullet] = []
-        self.enemyTanks: list[Tank] = []
-        
-        level1_obstacles: list[obstacles] = [
+LEVELS = [[
             #bricks
             obstacles(1, 0, 'brick'),
             obstacles(1, 1, 'brick'),
@@ -82,128 +81,281 @@ class App:
             obstacles(10, 6, 'forest'),
             obstacles(9, 6, 'forest'),
             obstacles(8, 6, 'forest'),
-            ]
-        
-        self.obstacles: list[obstacles] = level1_obstacles
-        '''
-        for _ in range(MAX_ENEMY_TANKS):
-            rand_x = randint(0, WIDTH - TANK_SIDE)
-            rand_y = randint(0, HEIGHT - TANK_SIDE)
-            rand_tank = Tank(rand_x + 4, rand_y + 4, choice(['n', 's', 'e', 'w']))
+            ]]
 
-            while True in [self.are_overlapping(rand_tank, tank) for tank in self.enemyTanks + [self.mainTank]]:
-                rand_x = randint(TANK_SIDE, WIDTH - TANK_SIDE)
-                rand_y = randint(TANK_SIDE, HEIGHT - TANK_SIDE)
-                rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']))
+class App:
+    def __init__(self):
+        pyxel.init(WIDTH, HEIGHT, fps=FPS)
+        self.x = 0
+        self.mainTank = mainTank(0, 0, 'n', 'main', 0)
+        self.bulletList: list[bullet] = []
+        self.enemyTanks: list[Tank] = []
+        self.gameOver: bool = False
+        self.obstacles: list[obstacles] = LEVELS[0]
+        
+        for _ in range(MAX_ENEMY_TANKS):
+            rand_x = randint(0, WIDTH - TANK_WIDTH)
+            rand_y = randint(0, HEIGHT - TANK_HEIGHT)
+            rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']), 'enemy' + str(len(self.enemyTanks)))
+
+            while True in [self.are_overlapping(rand_tank, tank) for tank in self.enemyTanks + [self.mainTank]] or True in [self.are_overlapping(rand_tank, obst) for obst in self.obstacles]:
+                rand_x = randint(0, WIDTH - TANK_WIDTH)
+                rand_y = randint(0, HEIGHT - TANK_HEIGHT)
+                rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']), 'enemy' + str(len(self.enemyTanks)))
             
             self.enemyTanks.append(rand_tank)
-            '''
+            
 
         pyxel.run(self.update, self.draw)
 
     def update(self):
         self.x = (self.x + 1) % pyxel.width
 
-        if pyxel.btn(pyxel.KEY_W) and self.mainTank.y - TANK_SPEED >= 0:
-            dummyTank = Tank(self.mainTank.x, self.mainTank.y - TANK_SPEED, self.mainTank.facing)
+        if not self.gameOver:
+            if pyxel.btn(pyxel.KEY_W):
+                self.moveTank('n', self.mainTank)
+            elif pyxel.btn(pyxel.KEY_A):
+                self.moveTank('w', self.mainTank)
+            elif pyxel.btn(pyxel.KEY_S):
+                self.moveTank('s', self.mainTank)
+            elif pyxel.btn(pyxel.KEY_D):
+                self.moveTank('e', self.mainTank)
 
-            if True not in [self.are_overlapping(dummyTank, tank) for tank in self.enemyTanks]:
-                if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
-                    self.mainTank.facing = 'n'
-                    self.mainTank.y -= TANK_SPEED
-        elif pyxel.btn(pyxel.KEY_A) and self.mainTank.x - TANK_SPEED >= 0:
-            dummyTank = Tank(self.mainTank.x - TANK_SPEED, self.mainTank.y, self.mainTank.facing)
-            
-            if True not in [self.are_overlapping(dummyTank, tank) for tank in self.enemyTanks]:
-                if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
-                    self.mainTank.facing = 'w'
-                    self.mainTank.x -= TANK_SPEED
-        elif pyxel.btn(pyxel.KEY_S) and self.mainTank.y + TANK_SIDE + TANK_SPEED <= HEIGHT:
-            dummyTank = Tank(self.mainTank.x, self.mainTank.y + TANK_SPEED, self.mainTank.facing)
-            
-            if True not in [self.are_overlapping(dummyTank, tank) for tank in self.enemyTanks]:
-                if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
-                    self.mainTank.facing = 's'
-                    self.mainTank.y += TANK_SPEED
-        elif pyxel.btn(pyxel.KEY_D) and self.mainTank.x + TANK_SIDE + TANK_SPEED <= WIDTH:
-            dummyTank = Tank(self.mainTank.x + TANK_SPEED, self.mainTank.y, self.mainTank.facing)
-            
-            if True not in [self.are_overlapping(dummyTank, tank) for tank in self.enemyTanks]:
-                if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
-                    self.mainTank.facing = 'e'
-                    self.mainTank.x += TANK_SPEED
+            if pyxel.btnp(pyxel.KEY_SPACE, hold=10, repeat=10):
+                self.bulletList.append(bullet(self.mainTank.x + self.mainTank.width//2 - 1, self.mainTank.y + self.mainTank.height//2 - 1, self.mainTank.id, self.mainTank.facing))
+        
+            for bul in self.bulletList:
+                if self.are_overlapping(bul, self.mainTank):
+                    if bul.origin != self.mainTank.id:
+                        self.gameOver = True
+                    elif bul.origin == self.mainTank.id:
+                        if bul.mirrored:
+                            self.bulletList.remove(bul)
+                            self.gameOver = True
 
-        if pyxel.btnp(pyxel.KEY_SPACE, hold=10, repeat=10):
-            if not self.bulletList:
-                self.bulletList.append(bullet(self.mainTank.x + 4, self.mainTank.y + 4, 'mainTank', self.mainTank.facing))
-        
-        for bul in self.bulletList:
-        
-            for tank in self.enemyTanks:
-                if self.are_overlapping(bul, tank):
+                for tank in self.enemyTanks:
+                    if self.are_overlapping(bul, tank):
+                        if bul.origin == self.mainTank.id:
+                            self.bulletList.remove(bul)
+                            self.enemyTanks.remove(tank)
+                
+                for obstacle in self.obstacles:
+                    if self.are_overlapping(bul, obstacle) and len(self.bulletList) != 0 and bul in self.bulletList:
+                        if obstacle.type == 'stone':
+                            self.bulletList.remove(bul)
+                        elif obstacle.type == 'brick':
+                            self.bulletList.remove(bul)
+                            self.obstacles.remove(obstacle)
+                            self.obstacles.append(obstacles(obstacle.x, obstacle.y, 'cracked'))
+                        elif obstacle.type == 'cracked':
+                            self.bulletList.remove(bul)
+                            self.obstacles.remove(obstacle)
+                        elif obstacle.type == 'mirror_ne':
+                            bul.mirrored = True
+                            if bul.direction == 'n':
+                                bul.direction = 'e'
+                            elif bul.direction == 'e':
+                                bul.direction = 'n'
+                            elif bul.direction == 'w':
+                                bul.direction = 's'
+                            elif bul.direction == 's':
+                                bul.direction = 'w'
+                        elif obstacle.type == 'mirror_se':
+                            bul.mirrored = True
+                            if bul.direction == 'n':
+                                bul.direction = 'w'
+                            elif bul.direction == 'e':
+                                bul.direction = 's'
+                            elif bul.direction == 'w':
+                                bul.direction = 'n'
+                            elif bul.direction == 's':
+                                bul.direction = 'e'
+                
+                for bul2 in [b for b in self.bulletList if b != bul]:
+                    if self.are_overlapping(bul, bul2):
+                        self.bulletList.remove(bul)
+                        self.bulletList.remove(bul2)
+
+                if bul.direction == 'n' and bul.y + BULLET_SIDE - BULLET_SPEED >= 0:
+                    bul.y -= BULLET_SPEED
+                elif bul.direction == 'e' and bul.x + BULLET_SPEED <= WIDTH:
+                    bul.x +=  BULLET_SPEED
+                elif bul.direction == 's' and bul.y + BULLET_SPEED <= HEIGHT:
+                    bul.y += BULLET_SPEED
+                elif bul.direction == 'w' and bul.x + BULLET_SIDE - BULLET_SPEED >= 0:
+                    bul.x -= BULLET_SPEED
+                else:
                     self.bulletList.remove(bul)
-                    self.enemyTanks.remove(tank)
-            
-            for obstacle in self.obstacles:
-                if self.are_overlapping(bul, obstacle) and len(self.bulletList) != 0:
-                    if obstacle.type == 'stone':
-                        self.bulletList.remove(bul)
-                    if obstacle.type == 'brick':
-                        self.bulletList.remove(bul)
-                        self.obstacles.remove(obstacle)
-                        self.obstacles.append(obstacles(obstacle.x, obstacle.y, 'cracked'))
-                    if obstacle.type == 'cracked':
-                        self.bulletList.remove(bul)
-                        self.obstacles.remove(obstacle)
-            
-            if bul.direction == 'n' and bul.y + BULLET_SIDE - BULLET_SPEED >= 0:
-                bul.y -= BULLET_SPEED
-            elif bul.direction == 'e' and bul.x + BULLET_SPEED <= WIDTH:
-                bul.x +=  BULLET_SPEED
-            elif bul.direction == 's' and bul.y + BULLET_SPEED <= HEIGHT:
-                bul.y += BULLET_SPEED
-            elif bul.direction == 'w' and bul.x + BULLET_SIDE - BULLET_SPEED >= 0:
-                bul.x -= BULLET_SPEED
-            else:
-                self.bulletList.remove(bul)
 
+            for tank in self.enemyTanks:
+                self.moveTank(tank.facing, tank)
+
+            if pyxel.frame_count % 15 == 0:
+                for tank in self.enemyTanks:
+                    dir_choices = ('n', 's', 'e', 'w')
+                    tank.facing = choice(dir_choices)
+
+            if pyxel.frame_count % 7 == 0:
+                for tank in self.enemyTanks:
+                    coin_flip = choice((True, False))
+                    if coin_flip == True and len(self.bulletList) <= 10:
+                        self.bulletList.append(bullet(tank.x + tank.width//2 - 1, tank.y + tank.height//2 - 1, tank.id, tank.facing))
+
+        else:
+            if pyxel.btn(pyxel.KEY_SPACE):
+                self.x = 0
+                self.mainTank = mainTank(0, 0, 'n', 'main', 0)
+                self.bulletList: list[bullet] = []
+                self.enemyTanks: list[Tank] = []
+                self.gameOver: bool = False
+                self.obstacles: list[obstacles] = LEVELS[0]
+                
+                for _ in range(MAX_ENEMY_TANKS):
+                    rand_x = randint(0, WIDTH - TANK_WIDTH)
+                    rand_y = randint(0, HEIGHT - TANK_HEIGHT)
+                    rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']), 'enemy' + str(len(self.enemyTanks)))
+
+                    while True in [self.are_overlapping(rand_tank, tank) for tank in self.enemyTanks + [self.mainTank]] or True in [self.are_overlapping(rand_tank, obst) for obst in self.obstacles]:
+                        rand_x = randint(0, WIDTH - TANK_WIDTH)
+                        rand_y = randint(0, HEIGHT - TANK_HEIGHT)
+                        rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']), 'enemy' + str(len(self.enemyTanks)))
+                    
+                    self.enemyTanks.append(rand_tank)
+
+    def line_line_intersection(self, x1: int, y1: int, x2: int, y2: int, x3: int, y3: int, x4: int, y4: int) -> bool:
+        uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+        uB = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+
+        if 0 <= uA <= 1 and 0 <= uB <= 1:
+            return True
+        
+        return False
+    
+    def line_rect_intersection(self, x1: int, y1: int, x2: int, y2: int, rx: int, ry: int, rw: int, rh: int) -> bool:
+        left = self.line_line_intersection(x1, y1, x2, y2, rx, ry, rx, ry+rh)
+        right = self.line_line_intersection(x1, y1, x2, y2, rx+rw, ry, rx+rw, ry+rh)
+        top = self.line_line_intersection(x1, y1, x2, y2, rx, ry, rx+rw, ry)
+        bottom = self.line_line_intersection(x1, y1, x2, y2, rx, ry+rh, rx+rw, ry+rh)
+
+        if left or right or top or bottom:
+            return True
+        
+        return False
 
     def are_overlapping(self, object1: Tank | bullet | obstacles, object2: Tank | bullet | obstacles) -> bool:
-        x1, y1, side1 = object1.x, object1.y, object1.side
-        x2, y2, side2 = object2.x, object2.y, object2.side
+        x1, y1 = object1.x, object1.y
+        x2, y2 = object2.x, object2.y
+
+        if isinstance(object1, Tank):
+            height1 = object1.height
+            width1 = object1.width
+        else:
+            height1 = object1.side
+            width1 = object1.side
+
+        if isinstance(object2, Tank):
+            height2 = object2.height
+            width2 = object2.width
+        else:
+            height2 = object2.side
+            width2 = object2.side
 
         # Convert obstacle coordinates into pixels
         if isinstance(object1, obstacles):
             if object1.type == 'forest':
                 return False
+            
             x1 = object1.x * object1.side
             y1 = object1.y * object1.side
+
         if isinstance(object2, obstacles):
             if object2.type == 'forest':
                 return False
+            
             x2 = object2.x * object2.side
             y2 = object2.y * object2.side
 
+        if xor(isinstance(object1, obstacles), isinstance(object2, obstacles)):
+            if isinstance(object1, obstacles) and 'mirror' in object1.type:
+                mirror_type = object1.type[-2:]
+
+                if mirror_type == 'ne':
+                    return self.line_rect_intersection(x1, y1+height1, x1+width1, y1, x2, y2, width2, height2)
+                if mirror_type == 'se':
+                    return self.line_rect_intersection(x1, y1, x1+width1, y1+height1, x2, y2, width2, height2)
+            if isinstance(object2, obstacles) and 'mirror' in object2.type:
+                mirror_type = object2.type[-2:]
+
+                if mirror_type == 'ne':
+                    return self.line_rect_intersection(x2, y2+height2, x2+width2, y2, x1, y1, width1, height1)
+                if mirror_type == 'se':
+                    return self.line_rect_intersection(x2, y2, x2+width2, y2+height2, x1, y1, width1, height1)
+
         # Check if one object is to the left of the other
-        if x1 + side1 <= x2 or x2 + side2 <= x1:
+        if x1 + width1 <= x2 or x2 + width2 <= x1:
             return False
         
         #Check if one object is above the other
-        if y1 + side1 <= y2 or y2 + side2 <= y1:
+        if y1 + height1 <= y2 or y2 + height2 <= y1:
             return False
         
         return True
     
+    def moveTank(self, dir: str, tank: Tank) -> None:
+        match dir:
+            case 'n':
+                if tank.y - TANK_SPEED >= 0:
+                    dummyTank = Tank(tank.x, tank.y - TANK_SPEED, tank.facing, 'dummy')
+                    tank.facing = 'n'
+
+                    if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
+                        if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
+                            tank.y -= TANK_SPEED
+            case 'w':
+                if tank.x - TANK_SPEED >= 0:
+                    dummyTank = Tank(tank.x - TANK_SPEED, tank.y, tank.facing, 'dummy')
+                    tank.facing = 'w'
+
+                    if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
+                        if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
+                            tank.x -= TANK_SPEED
+
+            case 's':
+                if tank.y + TANK_HEIGHT + TANK_SPEED <= HEIGHT:
+                    dummyTank = Tank(tank.x, tank.y + TANK_SPEED, tank.facing, 'dummy')
+                    tank.facing = 's'
+
+                    if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
+                        if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
+                            tank.y += TANK_SPEED
+
+            case 'e':
+                if tank.x + TANK_WIDTH + TANK_SPEED <= WIDTH:
+                    dummyTank = Tank(tank.x + TANK_SPEED, tank.y, tank.facing, 'dummy')
+                    tank.facing = 'e' 
+
+                    if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
+                        if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
+                            tank.x += TANK_SPEED
+
+            case _:
+                pass
+
     def draw(self):
         pyxel.cls(0)
         pyxel.load('PYXEL_RESOURCE_FILE.pyxres')
-        for tank in self.enemyTanks:
-            self.drawEnemyTank(tank.x, tank.y, tank.facing)
-        for bul in self.bulletList:
-            self.drawBullet(bul.x, bul.y)
-        self.drawTank(self.mainTank.x, self.mainTank.y,self.mainTank.facing)
-        for obstacle in self.obstacles:
-            self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
+
+        if not self.gameOver:
+            for tank in self.enemyTanks:
+                self.drawEnemyTank(tank.x, tank.y, tank.facing)
+            for bul in self.bulletList:
+                self.drawBullet(bul.x, bul.y)
+            self.drawTank(self.mainTank.x, self.mainTank.y,self.mainTank.facing)
+            for obstacle in self.obstacles:
+                self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
+        else:
+            pyxel.text(WIDTH/2 - 20, HEIGHT/2 - 20, "GAME OVER", 5)
+            pyxel.text(WIDTH/2 - 50, HEIGHT/2 - 10, "PRESS SPACE TO PLAY AGAIN", 5)
 
     def drawTank(self, x: int, y: int, facing: str):
         if facing == 'n':
@@ -213,10 +365,12 @@ class App:
             img=0,
             u=3,
             v=1,
-            w=10,
-            h=12,
+            w=TANK_WIDTH,
+            h=TANK_HEIGHT,
             colkey=0
         )
+            self.mainTank.width = TANK_WIDTH
+            self.mainTank.height = TANK_HEIGHT
         elif facing == 'e':
             pyxel.blt(
             x=x,
@@ -224,10 +378,12 @@ class App:
             img=0,
             u=51,
             v=3,
-            w=12,
-            h=10,
+            w=TANK_HEIGHT,
+            h=TANK_WIDTH,
             colkey=0
         )
+            self.mainTank.height = TANK_WIDTH
+            self.mainTank.width = TANK_HEIGHT
         elif facing == 's':
             pyxel.blt(
             x=x,
@@ -235,10 +391,12 @@ class App:
             img=0,
             u=19,
             v=3,
-            w=10,
-            h=12,
+            w=TANK_WIDTH,
+            h=TANK_HEIGHT,
             colkey=0
         )
+            self.mainTank.width = TANK_WIDTH
+            self.mainTank.height = TANK_HEIGHT
         elif facing == 'w':
             pyxel.blt(
             x=x,
@@ -246,10 +404,12 @@ class App:
             img=0,
             u=33,
             v=3,
-            w=12,
-            h=10,
+            w=TANK_HEIGHT,
+            h=TANK_WIDTH,
             colkey=0
         )
+            self.mainTank.height = TANK_WIDTH
+            self.mainTank.width = TANK_HEIGHT
             
     def drawBullet(self, x:int, y:int):
         pyxel.blt(
@@ -258,8 +418,8 @@ class App:
             img=0,
             u=7,
             v=39,
-            w=2,
-            h=2,
+            w=BULLET_SIDE,
+            h=BULLET_SIDE,
             colkey=0
         )
 
@@ -271,10 +431,12 @@ class App:
             img=0,
             u=3,
             v=17,
-            w=10,
-            h=12,
+            w=TANK_WIDTH,
+            h=TANK_HEIGHT,
             colkey=0
         )
+            self.mainTank.width = TANK_WIDTH
+            self.mainTank.height = TANK_HEIGHT
         elif facing == 'e':
             pyxel.blt(
             x=x,
@@ -282,10 +444,12 @@ class App:
             img=0,
             u=51,
             v=19,
-            w=12,
-            h=10,
+            w=TANK_HEIGHT,
+            h=TANK_WIDTH,
             colkey=0
         )
+            self.mainTank.height = TANK_WIDTH
+            self.mainTank.width = TANK_HEIGHT
         elif facing == 's':
             pyxel.blt(
             x=x,
@@ -293,10 +457,12 @@ class App:
             img=0,
             u=19,
             v=19,
-            w=10,
-            h=12,
+            w=TANK_WIDTH,
+            h=TANK_HEIGHT,
             colkey=0
         )
+            self.mainTank.width = TANK_WIDTH
+            self.mainTank.height = TANK_HEIGHT
         elif facing == 'w':
             pyxel.blt(
             x=x,
@@ -304,10 +470,12 @@ class App:
             img=0,
             u=33,
             v=19,
-            w=12,
-            h=10,
+            w=TANK_HEIGHT,
+            h=TANK_WIDTH,
             colkey=0
         )
+            self.mainTank.height = TANK_WIDTH
+            self.mainTank.width = TANK_HEIGHT
             
     def drawObstacle(self, x: int, y: int, type: str) -> None:  # x,y are coordinates in game
         if type == 'brick':
