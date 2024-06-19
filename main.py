@@ -155,6 +155,8 @@ class App:
                                 bul.direction = 'n'
                             elif bul.direction == 's':
                                 bul.direction = 'e'
+                        elif obstacle.type == 'home':
+                            self.gameOver = True
                 
                 for bul2 in [b for b in self.bulletList if b != bul]:
                     if self.are_overlapping(bul, bul2):
