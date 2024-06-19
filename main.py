@@ -86,12 +86,18 @@ LEVELS = [[
 class App:
     def __init__(self):
         pyxel.init(WIDTH, HEIGHT, fps=FPS)
+        pyxel.load('PYXEL_RESOURCE_FILE.pyxres')
+        self.init_game()
+        pyxel.run(self.update, self.draw)
+
+    def init_game(self):
         self.x = 0
         self.mainTank = mainTank(0, 0, 'n', 'main', 0)
-        self.bulletList: list[bullet] = []
-        self.enemyTanks: list[Tank] = []
+        self.bulletList: list[bullet] = list()
+        self.enemyTanks: list[Tank] = list()
         self.gameOver: bool = False
-        self.obstacles: list[obstacles] = LEVELS[0]
+        self.obstacles: list[obstacles] = LEVELS[0][::]
+        self.bgmPlaying: bool = False
         
         for _ in range(MAX_ENEMY_TANKS):
             rand_x = randint(0, WIDTH - TANK_WIDTH)
@@ -104,40 +110,59 @@ class App:
                 rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']), 'enemy' + str(len(self.enemyTanks)))
             
             self.enemyTanks.append(rand_tank)
-            
-
-        pyxel.run(self.update, self.draw)
 
     def update(self):
         self.x = (self.x + 1) % pyxel.width
 
+        if not self.bgmPlaying:
+            for ch in range(3):
+                            pyxel.stop(ch)
+            if self.gameOver:
+                pyxel.playm(1, loop=True)
+            else:
+                pyxel.playm(0, loop=True)
+
+            self.bgmPlaying = True
+
         if not self.gameOver:
             if pyxel.btn(pyxel.KEY_W):
                 self.moveTank('n', self.mainTank)
+                pyxel.play(3, 10)
             elif pyxel.btn(pyxel.KEY_A):
                 self.moveTank('w', self.mainTank)
+                pyxel.play(3, 10)
             elif pyxel.btn(pyxel.KEY_S):
                 self.moveTank('s', self.mainTank)
+                pyxel.play(3, 10)
             elif pyxel.btn(pyxel.KEY_D):
                 self.moveTank('e', self.mainTank)
+                pyxel.play(3, 10)
 
             if pyxel.btnp(pyxel.KEY_SPACE, hold=10, repeat=10):
-                self.bulletList.append(bullet(self.mainTank.x + self.mainTank.width//2 - 1, self.mainTank.y + self.mainTank.height//2 - 1, self.mainTank.id, self.mainTank.facing))
+                if len([bul for bul in self.bulletList if bul.origin == self.mainTank.id]) <= 1:
+                    self.bulletList.append(bullet(self.mainTank.x + self.mainTank.width//2 - 1, self.mainTank.y + self.mainTank.height//2 - 1, self.mainTank.id, self.mainTank.facing))
+                pyxel.play(3, 6)
         
             for bul in self.bulletList:
                 if self.are_overlapping(bul, self.mainTank):
                     if bul.origin != self.mainTank.id:
+                        self.bulletList.remove(bul)
                         self.gameOver = True
+                        self.bgmPlaying = False
+                        pyxel.play(3, 5)
                     elif bul.origin == self.mainTank.id:
                         if bul.mirrored:
                             self.bulletList.remove(bul)
                             self.gameOver = True
+                            self.bgmPlaying = False
+                            pyxel.play(3, 5)
 
                 for tank in self.enemyTanks:
                     if self.are_overlapping(bul, tank):
                         if bul.origin == self.mainTank.id:
                             self.bulletList.remove(bul)
                             self.enemyTanks.remove(tank)
+                            pyxel.play(3, 5)
                 
                 for obstacle in self.obstacles:
                     if self.are_overlapping(bul, obstacle) and len(self.bulletList) != 0 and bul in self.bulletList:
@@ -150,6 +175,7 @@ class App:
                         elif obstacle.type == 'cracked':
                             self.bulletList.remove(bul)
                             self.obstacles.remove(obstacle)
+                            pyxel.play(3, 5)
                         elif obstacle.type == 'mirror_ne':
                             bul.mirrored = True
                             if bul.direction == 'n':
@@ -198,29 +224,12 @@ class App:
             if pyxel.frame_count % 7 == 0:
                 for tank in self.enemyTanks:
                     coin_flip = choice((True, False))
-                    if coin_flip == True and len(self.bulletList) <= 10:
+                    if coin_flip == True and len([bul for bul in self.bulletList if bul.origin != self.mainTank.id]) <= MAX_ENEMY_TANKS:
                         self.bulletList.append(bullet(tank.x + tank.width//2 - 1, tank.y + tank.height//2 - 1, tank.id, tank.facing))
 
         else:
             if pyxel.btn(pyxel.KEY_SPACE):
-                self.x = 0
-                self.mainTank = mainTank(0, 0, 'n', 'main', 0)
-                self.bulletList: list[bullet] = []
-                self.enemyTanks: list[Tank] = []
-                self.gameOver: bool = False
-                self.obstacles: list[obstacles] = LEVELS[0]
-                
-                for _ in range(MAX_ENEMY_TANKS):
-                    rand_x = randint(0, WIDTH - TANK_WIDTH)
-                    rand_y = randint(0, HEIGHT - TANK_HEIGHT)
-                    rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']), 'enemy' + str(len(self.enemyTanks)))
-
-                    while True in [self.are_overlapping(rand_tank, tank) for tank in self.enemyTanks + [self.mainTank]] or True in [self.are_overlapping(rand_tank, obst) for obst in self.obstacles]:
-                        rand_x = randint(0, WIDTH - TANK_WIDTH)
-                        rand_y = randint(0, HEIGHT - TANK_HEIGHT)
-                        rand_tank = Tank(rand_x, rand_y, choice(['n', 's', 'e', 'w']), 'enemy' + str(len(self.enemyTanks)))
-                    
-                    self.enemyTanks.append(rand_tank)
+                self.init_game()
 
     def line_line_intersection(self, x1: int, y1: int, x2: int, y2: int, x3: int, y3: int, x4: int, y4: int) -> bool:
         uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
@@ -343,7 +352,6 @@ class App:
 
     def draw(self):
         pyxel.cls(0)
-        pyxel.load('PYXEL_RESOURCE_FILE.pyxres')
 
         if not self.gameOver:
             for tank in self.enemyTanks:
