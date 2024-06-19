@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from random import randint, choice
 from operator import xor
 from math import dist
+from stage import obstacles, levels
 
 #global variables to easily change code when calibrating 
 FPS = 30
@@ -15,6 +16,7 @@ BULLET_SIDE = 2
 BULLET_SPEED = 5
 MAX_ENEMY_TANKS = 3
 OBSTACLE_SIDE = 15
+LEVEL = 1
 
 @dataclass
 class Tank:
@@ -38,50 +40,7 @@ class bullet:
     mirrored: bool = False
     side: int = BULLET_SIDE
 
-@dataclass
-class obstacles:
-    x: int
-    y: int
-    type: str
-    side: int = OBSTACLE_SIDE
-
-LEVELS = [[
-            #bricks
-            obstacles(1, 0, 'brick'),
-            obstacles(1, 1, 'brick'),
-            obstacles(1, 2, 'brick'),
-            obstacles(5, 0, 'brick'),
-            obstacles(5, 1, 'brick'),
-            obstacles(5, 2, 'brick'),
-            obstacles(9, 0, 'brick'),
-            obstacles(9, 1, 'brick'),
-            obstacles(9, 2, 'brick'),
-
-            #stones
-            obstacles(1, 4, 'stone'),
-            obstacles(5, 4, 'stone'),
-            obstacles(9, 4, 'stone'),
-
-            #mirrors
-            obstacles(3, 1, 'mirror_ne'),
-            obstacles(7, 1, 'mirror_se'),
-
-            #water
-            obstacles(0, 7, 'water'),
-            obstacles(1, 7, 'water'),
-            obstacles(2, 7, 'water'),
-            obstacles(0, 6, 'water'),
-            obstacles(1, 6, 'water'),
-            obstacles(2, 6, 'water'),
-
-            #forest
-            obstacles(10, 7, 'forest'),
-            obstacles(9, 7, 'forest'),
-            obstacles(8, 7, 'forest'),
-            obstacles(10, 6, 'forest'),
-            obstacles(9, 6, 'forest'),
-            obstacles(8, 6, 'forest'),
-            ]]
+stage = levels[LEVEL - 1]
 
 class App:
     def __init__(self):
@@ -92,11 +51,11 @@ class App:
 
     def init_game(self):
         self.x = 0
-        self.mainTank = mainTank(0, 0, 'n', 'main', 0)
+        self.mainTank = mainTank(0, 0, 'n', 'main', 0) if LEVEL != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0)
         self.bulletList: list[bullet] = list()
         self.enemyTanks: list[Tank] = list()
         self.gameOver: bool = False
-        self.obstacles: list[obstacles] = LEVELS[0][::]
+        self.obstacles: list[obstacles] = stage[::]
         self.bgmPlaying: bool = False
         
         for _ in range(MAX_ENEMY_TANKS):
@@ -356,11 +315,15 @@ class App:
         if not self.gameOver:
             for tank in self.enemyTanks:
                 self.drawEnemyTank(tank.x, tank.y, tank.facing)
+            for obstacle in self.obstacles:
+                if obstacle.type == 'water':
+                    self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
             for bul in self.bulletList:
                 self.drawBullet(bul.x, bul.y)
             self.drawTank(self.mainTank.x, self.mainTank.y,self.mainTank.facing)
             for obstacle in self.obstacles:
-                self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
+                if obstacle.type != 'water':
+                    self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
         else:
             pyxel.text(WIDTH/2 - 20, HEIGHT/2 - 20, "GAME OVER", 5)
             pyxel.text(WIDTH/2 - 50, HEIGHT/2 - 10, "PRESS SPACE TO PLAY AGAIN", 5)
@@ -558,6 +521,18 @@ class App:
                 y=y*OBSTACLE_SIDE,
                 img=0,
                 u=16,
+                v=80,
+                w=OBSTACLE_SIDE,
+                h=OBSTACLE_SIDE,
+                colkey=0
+            )
+
+        if type == 'home':
+            pyxel.blt(
+                x=x*OBSTACLE_SIDE,
+                y=y*OBSTACLE_SIDE,
+                img=0,
+                u=32,
                 v=80,
                 w=OBSTACLE_SIDE,
                 h=OBSTACLE_SIDE,
