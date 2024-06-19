@@ -2,7 +2,6 @@ import pyxel
 from dataclasses import dataclass
 from random import randint, choice
 from operator import xor
-from math import dist
 from stage import obstacles, levels
 
 #global variables to easily change code when calibrating 
@@ -16,7 +15,9 @@ BULLET_SIDE = 2
 BULLET_SPEED = 5
 MAX_ENEMY_TANKS = 3
 OBSTACLE_SIDE = 15
-LEVEL = 1
+
+global level, stage
+level = 1
 
 @dataclass
 class Tank:
@@ -40,8 +41,6 @@ class bullet:
     mirrored: bool = False
     side: int = BULLET_SIDE
 
-stage = levels[LEVEL - 1]
-
 class App:
     def __init__(self):
         pyxel.init(WIDTH, HEIGHT, fps=FPS)
@@ -50,12 +49,14 @@ class App:
         pyxel.run(self.update, self.draw)
 
     def init_game(self):
+        global level
         self.x = 0
-        self.mainTank = mainTank(0, 0, 'n', 'main', 0) if LEVEL != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0)
+        self.mainTank = mainTank(0, 0, 'n', 'main', 0) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0)
         self.bulletList: list[bullet] = list()
         self.enemyTanks: list[Tank] = list()
         self.gameOver: bool = False
-        self.obstacles: list[obstacles] = stage[::]
+        self.levelWin: bool = False
+        self.obstacles: list[obstacles] = levels[level - 1][::]
         self.bgmPlaying: bool = False
         
         for _ in range(MAX_ENEMY_TANKS):
@@ -71,17 +72,28 @@ class App:
             self.enemyTanks.append(rand_tank)
 
     def update(self):
+        global level
+
         self.x = (self.x + 1) % pyxel.width
 
         if not self.bgmPlaying:
             for ch in range(3):
-                            pyxel.stop(ch)
+                pyxel.stop(ch)
             if self.gameOver:
                 pyxel.playm(1, loop=True)
             else:
                 pyxel.playm(0, loop=True)
 
             self.bgmPlaying = True
+
+        if len(self.enemyTanks) == 0:
+            self.levelWin = True
+
+        if self.levelWin:
+            if level < len(levels):
+                level += 1
+
+                self.init_game()
 
         if not self.gameOver:
             if pyxel.btn(pyxel.KEY_W):
@@ -108,12 +120,14 @@ class App:
                         self.bulletList.remove(bul)
                         self.gameOver = True
                         self.bgmPlaying = False
+                        level = 1
                         pyxel.play(3, 5)
                     elif bul.origin == self.mainTank.id:
                         if bul.mirrored:
                             self.bulletList.remove(bul)
                             self.gameOver = True
                             self.bgmPlaying = False
+                            level = 1
                             pyxel.play(3, 5)
 
                 for tank in self.enemyTanks:
@@ -157,6 +171,9 @@ class App:
                                 bul.direction = 'e'
                         elif obstacle.type == 'home':
                             self.gameOver = True
+                            self.bgmPlaying = False
+                            level = 1
+                            pyxel.play(3, 5)
                 
                 for bul2 in [b for b in self.bulletList if b != bul]:
                     if self.are_overlapping(bul, bul2):
