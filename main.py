@@ -15,6 +15,7 @@ BULLET_SIDE = 2
 BULLET_SPEED = 5
 MAX_ENEMY_TANKS = 3
 OBSTACLE_SIDE = 15
+LIVES = 3
 
 global level, stage
 level = 1
@@ -30,7 +31,8 @@ class Tank:
 
 @dataclass
 class mainTank(Tank):
-    lives: int = 3
+    global LIVES
+    lives: int = LIVES
 
 @dataclass
 class bullet:
@@ -49,9 +51,9 @@ class App:
         pyxel.run(self.update, self.draw)
 
     def init_game(self):
-        global level
+        global level, LIVES
         self.x = 0
-        self.mainTank = mainTank(0, 0, 'n', 'main', 0) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0)
+        self.mainTank = mainTank(0, 0, 'n', 'main', 0, lives=LIVES) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0, lives=LIVES)
         self.bulletList: list[bullet] = list()
         self.enemyTanks: list[Tank] = list()
         self.gameOver: bool = False
@@ -72,9 +74,15 @@ class App:
             self.enemyTanks.append(rand_tank)
 
     def update(self):
-        global level
+        global level, LIVES
 
         self.x = (self.x + 1) % pyxel.width
+
+        if self.mainTank.lives == 0:
+            self.gameOver = True
+            self.bgmPlaying = False
+            level = 1
+            pyxel.play(3, 5)
 
         if not self.bgmPlaying:
             for ch in range(3):
@@ -92,7 +100,6 @@ class App:
         if self.levelWin:
             if level < len(levels):
                 level += 1
-
                 self.init_game()
 
         if not self.gameOver:
@@ -118,10 +125,9 @@ class App:
                 if self.are_overlapping(bul, self.mainTank):
                     if bul.origin != self.mainTank.id:
                         self.bulletList.remove(bul)
-                        self.gameOver = True
-                        self.bgmPlaying = False
-                        level = 1
                         pyxel.play(3, 5)
+                        LIVES -= 1
+                        self.mainTank = mainTank(0, 0, 'n', 'main', 0, lives=LIVES) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0, lives=LIVES)
                     elif bul.origin == self.mainTank.id:
                         if bul.mirrored:
                             self.bulletList.remove(bul)
@@ -207,6 +213,7 @@ class App:
 
         else:
             if pyxel.btn(pyxel.KEY_SPACE):
+                LIVES = 3
                 self.init_game()
 
     def line_line_intersection(self, x1: int, y1: int, x2: int, y2: int, x3: int, y3: int, x4: int, y4: int) -> bool:
@@ -343,6 +350,7 @@ class App:
             for obstacle in self.obstacles:
                 if obstacle.type != 'water':
                     self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
+            self.drawHearts(self.mainTank.lives)
         else:
             pyxel.text(WIDTH/2 - 20, HEIGHT/2 - 20, "GAME OVER", 5)
             pyxel.text(WIDTH/2 - 50, HEIGHT/2 - 10, "PRESS SPACE TO PLAY AGAIN", 5)
@@ -467,6 +475,135 @@ class App:
             self.mainTank.height = TANK_WIDTH
             self.mainTank.width = TANK_HEIGHT
             
+    def drawHearts(self, lives: int) -> None:
+        if lives == 3:
+            pyxel.blt(
+                x=155,
+                y=2,
+                img=0,
+                u=16,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+            pyxel.blt(
+                x=146,
+                y=2,
+                img=0,
+                u=16,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+            pyxel.blt(
+                x=137,
+                y=2,
+                img=0,
+                u=16,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+
+        elif lives == 2:
+            pyxel.blt(
+                x=155,
+                y=2,
+                img=0,
+                u=16,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+            pyxel.blt(
+                x=146,
+                y=2,
+                img=0,
+                u=16,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+            pyxel.blt(
+                x=137,
+                y=2,
+                img=0,
+                u=32,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+
+        elif lives == 1:
+            pyxel.blt(
+                x=155,
+                y=2,
+                img=0,
+                u=16,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+            pyxel.blt(
+                x=146,
+                y=2,
+                img=0,
+                u=32,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+            pyxel.blt(
+                x=137,
+                y=2,
+                img=0,
+                u=32,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+
+        elif lives == 0:
+            pyxel.blt(
+                x=155,
+                y=2,
+                img=0,
+                u=32,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+            pyxel.blt(
+                x=146,
+                y=2,
+                img=0,
+                u=32,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+            pyxel.blt(
+                x=137,
+                y=2,
+                img=0,
+                u=32,
+                v=33,
+                w=7,
+                h=6,
+                colkey=0
+            )
+
     def drawObstacle(self, x: int, y: int, type: str) -> None:  # x,y are coordinates in game
         if type == 'brick':
             pyxel.blt(
@@ -557,6 +694,7 @@ class App:
                 h=OBSTACLE_SIDE,
                 colkey=0
             )
+        
 App()
 
 # Level 1 Layout: (Obstacle Coordinates in 'Grid') *Assuming Grid is 10 x 7
