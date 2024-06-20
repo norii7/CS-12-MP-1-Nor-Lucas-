@@ -10,13 +10,14 @@ HEIGHT = 120
 WIDTH = 165
 TANK_HEIGHT = 12
 TANK_WIDTH  = 10
-TANK_SPEED = 1
 BULLET_SIDE = 2
 BULLET_SPEED = 5
 MAX_ENEMY_TANKS = 3
+MAX_POWERUPS = 1
 OBSTACLE_SIDE = 15
 MAX_LIVES = 3
 CHEAT_CODES = ["UNOTIME", "MORELIVE", "SIRJBEST", "TANKNICOLONEL"]
+tankspeed = 1
 
 global level
 level = 1
@@ -43,6 +44,13 @@ class bullet:
     mirrored: bool = False
     side: int = BULLET_SIDE
 
+@dataclass
+class powerUp:
+    x: int
+    y: int
+    type: str
+    side: int = OBSTACLE_SIDE
+
 class App:
     def __init__(self):
         pyxel.init(WIDTH, HEIGHT, fps=FPS)
@@ -51,7 +59,7 @@ class App:
         pyxel.run(self.update, self.draw)
 
     def init_game(self):
-        global level
+        global level, tankspeed
         self.x = 0
         self.mainTank = mainTank(0, 0, 'n', 'main', lives = MAX_LIVES if level == 1 else self.mainTank.lives) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', lives = MAX_LIVES if level == 1 else self.mainTank.lives)
         self.bulletList: list[bullet] = list()
@@ -63,6 +71,7 @@ class App:
         self.levelWin: bool = False
         self.obstacles: list[obstacles] = levels[level - 1][::]
         self.bgmPlaying: bool = False
+        self.powerUPs: list[powerUp] = list()
         
         for _ in range(MAX_ENEMY_TANKS):
             rand_x = randint(0, WIDTH - TANK_WIDTH)
@@ -76,8 +85,20 @@ class App:
             
             self.enemyTanks.append(rand_tank)
 
+        for _ in range(MAX_POWERUPS):
+            rand_x = randint(0, WIDTH - OBSTACLE_SIDE)
+            rand_y = randint(0, HEIGHT - OBSTACLE_SIDE)
+            rand_powerup = powerUp(rand_x, rand_y, 'speedUp')
+
+            while True in [self.are_overlapping(rand_powerup, tank) for tank in self.enemyTanks + [self.mainTank]] or True in [self.are_overlapping(rand_powerup, obst) for obst in self.obstacles]:
+                rand_x = randint(0, WIDTH - OBSTACLE_SIDE)
+                rand_y = randint(0, HEIGHT - OBSTACLE_SIDE)
+                rand_powerup = powerUp(rand_x, rand_y, 'speedUp')
+            
+            self.powerUPs.append(rand_powerup)
+
     def update(self):
-        global level
+        global level, tankspeed
 
         self.x = (self.x + 1) % pyxel.width
 
@@ -144,6 +165,12 @@ class App:
                     if len([bul for bul in self.bulletList if bul.origin == self.mainTank.id]) <= 1:
                         self.bulletList.append(bullet(self.mainTank.x + self.mainTank.width//2 - 1, self.mainTank.y + self.mainTank.height//2 - 1, self.mainTank.id, self.mainTank.facing))
                     pyxel.play(3, 6)
+
+                for powerup in self.powerUPs:
+                    if self.are_overlapping(powerup, self.mainTank):
+                        self.powerUPs.remove(powerup)
+                        if powerup.type == 'speedUp':
+                            tankspeed += 1
 
                 for bul in self.bulletList:
                     if self.are_overlapping(bul, self.mainTank):
@@ -235,7 +262,7 @@ class App:
                         self.bulletList.remove(bul)
 
                 for tank in self.enemyTanks:
-                    self.moveTank(tank.facing, tank)
+                    self.moveEnemyTank(tank.facing, tank)
 
                 if pyxel.frame_count % 15 == 0:
                     for tank in self.enemyTanks:
@@ -250,6 +277,7 @@ class App:
                                 self.bulletList.append(bullet(tank.x + tank.width//2 - 1, tank.y + tank.height//2 - 1, tank.id, tank.facing))
         else:
             if pyxel.btn(pyxel.KEY_SPACE):
+                tankspeed = 1
                 self.mainTank.lives = 3
                 self.init_game()
 
@@ -273,7 +301,7 @@ class App:
         
         return False
 
-    def are_overlapping(self, object1: Tank | bullet | obstacles, object2: Tank | bullet | obstacles) -> bool:
+    def are_overlapping(self, object1: Tank | bullet | obstacles | powerUp, object2: Tank | bullet | obstacles | powerUp) -> bool:
         x1, y1 = object1.x, object1.y
         x2, y2 = object2.x, object2.y
 
@@ -335,39 +363,79 @@ class App:
     def moveTank(self, dir: str, tank: Tank) -> None:
         match dir:
             case 'n':
-                if tank.y - TANK_SPEED >= 0:
-                    dummyTank = Tank(tank.x, tank.y - TANK_SPEED, tank.facing, 'dummy')
+                if tank.y - tankspeed >= 0:
+                    dummyTank = Tank(tank.x, tank.y - tankspeed, tank.facing, 'dummy')
                     tank.facing = 'n'
 
                     if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
                         if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
-                            tank.y -= TANK_SPEED
+                            tank.y -= tankspeed
             case 'w':
-                if tank.x - TANK_SPEED >= 0:
-                    dummyTank = Tank(tank.x - TANK_SPEED, tank.y, tank.facing, 'dummy')
+                if tank.x - tankspeed >= 0:
+                    dummyTank = Tank(tank.x - tankspeed, tank.y, tank.facing, 'dummy')
                     tank.facing = 'w'
 
                     if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
                         if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
-                            tank.x -= TANK_SPEED
+                            tank.x -= tankspeed
 
             case 's':
-                if tank.y + TANK_HEIGHT + TANK_SPEED <= HEIGHT:
-                    dummyTank = Tank(tank.x, tank.y + TANK_SPEED, tank.facing, 'dummy')
+                if tank.y + TANK_HEIGHT + tankspeed <= HEIGHT:
+                    dummyTank = Tank(tank.x, tank.y + tankspeed, tank.facing, 'dummy')
                     tank.facing = 's'
 
                     if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
                         if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
-                            tank.y += TANK_SPEED
+                            tank.y += tankspeed
 
             case 'e':
-                if tank.x + TANK_WIDTH + TANK_SPEED <= WIDTH:
-                    dummyTank = Tank(tank.x + TANK_SPEED, tank.y, tank.facing, 'dummy')
+                if tank.x + TANK_WIDTH + tankspeed <= WIDTH:
+                    dummyTank = Tank(tank.x + tankspeed, tank.y, tank.facing, 'dummy')
                     tank.facing = 'e' 
 
                     if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
                         if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
-                            tank.x += TANK_SPEED
+                            tank.x += tankspeed
+
+            case _:
+                pass
+
+    def moveEnemyTank(self, dir: str, tank: Tank) -> None:
+        match dir:
+            case 'n':
+                if tank.y - 1 >= 0:
+                    dummyTank = Tank(tank.x, tank.y - 1, tank.facing, 'dummy')
+                    tank.facing = 'n'
+
+                    if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
+                        if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
+                            tank.y -= 1
+            case 'w':
+                if tank.x - 1 >= 0:
+                    dummyTank = Tank(tank.x - 1, tank.y, tank.facing, 'dummy')
+                    tank.facing = 'w'
+
+                    if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
+                        if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
+                            tank.x -= 1
+
+            case 's':
+                if tank.y + TANK_HEIGHT + 1 <= HEIGHT:
+                    dummyTank = Tank(tank.x, tank.y + 1, tank.facing, 'dummy')
+                    tank.facing = 's'
+
+                    if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
+                        if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
+                            tank.y += 1
+
+            case 'e':
+                if tank.x + TANK_WIDTH + 1 <= WIDTH:
+                    dummyTank = Tank(tank.x + 1, tank.y, tank.facing, 'dummy')
+                    tank.facing = 'e' 
+
+                    if True not in [self.are_overlapping(dummyTank, tnk) for tnk in self.enemyTanks + [self.mainTank] if tnk != tank]:
+                        if True not in [self.are_overlapping(dummyTank, obstacle) for obstacle in self.obstacles]:
+                            tank.x += 1
 
             case _:
                 pass
@@ -388,6 +456,8 @@ class App:
             for obstacle in self.obstacles:
                 if obstacle.type != 'water':
                     self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
+            for powerup in self.powerUPs:
+                self.drawPowerUp(powerup.x, powerup.y, powerup.type)
             self.drawHearts(self.mainTank.lives)
 
             if self.isPaused:
@@ -658,6 +728,19 @@ class App:
                 colkey=0
             )
 
+    def drawPowerUp(self, x: int, y: int, type: str) -> None:
+        if type == 'speedUp':
+            pyxel.blt(
+                    x=x,
+                    y=y,
+                    img=0,
+                    u=17,
+                    v=113,
+                    w=14,
+                    h=14,
+                    colkey=0
+            )
+
     def drawObstacle(self, x: int, y: int, type: str) -> None:  # x,y are coordinates in game
         if type == 'brick':
             pyxel.blt(
@@ -750,11 +833,3 @@ class App:
             )
         
 App()
-
-# Level 1 Layout: (Obstacle Coordinates in 'Grid') *Assuming Grid is 10 x 7
-
-# Bricks = [(1, 0), (1, 1), (1, 2), (5, 0), (5, 1), (5, 2), (9, 0), (9, 1), (9, 2)]
-# Stones = [(1, 4), (5, 4), (9, 4)]
-# Mirrors = [(3, 1), (7, 1)]
-# Water = [(0, 8), (1, 8), (2, 8), (0, 7), (1, 7), (2, 7)]
-# Forest = [(11, 8), (10, 8), (9, 8), (11, 7), (10, 7), (9, 7)]
