@@ -15,9 +15,10 @@ BULLET_SIDE = 2
 BULLET_SPEED = 5
 MAX_ENEMY_TANKS = 3
 OBSTACLE_SIDE = 15
-LIVES = 3
+MAX_LIVES = 3
+CHEAT_CODES = ["UNOTIME", "MORELIVE", "SIRJBEST", "TANKNICOLONEL"]
 
-global level, stage
+global level
 level = 1
 
 @dataclass
@@ -31,8 +32,7 @@ class Tank:
 
 @dataclass
 class mainTank(Tank):
-    global LIVES
-    lives: int = LIVES
+    lives: int = int()
 
 @dataclass
 class bullet:
@@ -51,11 +51,14 @@ class App:
         pyxel.run(self.update, self.draw)
 
     def init_game(self):
-        global level, LIVES
+        global level
         self.x = 0
-        self.mainTank = mainTank(0, 0, 'n', 'main', 0, lives=LIVES) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0, lives=LIVES)
+        self.mainTank = mainTank(0, 0, 'n', 'main', lives = MAX_LIVES if level == 1 else self.mainTank.lives) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', lives = MAX_LIVES if level == 1 else self.mainTank.lives)
         self.bulletList: list[bullet] = list()
         self.enemyTanks: list[Tank] = list()
+        self.enterCheatCode: bool = False
+        self.input_str: str = ""
+        self.isPaused: bool = False
         self.gameOver: bool = False
         self.levelWin: bool = False
         self.obstacles: list[obstacles] = levels[level - 1][::]
@@ -74,25 +77,18 @@ class App:
             self.enemyTanks.append(rand_tank)
 
     def update(self):
-        global level, LIVES
+        global level
 
         self.x = (self.x + 1) % pyxel.width
 
-        if self.mainTank.lives == 0:
-            self.gameOver = True
-            self.bgmPlaying = False
-            level = 1
-            pyxel.play(3, 5)
-
         if not self.bgmPlaying:
+            self.bgmPlaying = True
             for ch in range(3):
                 pyxel.stop(ch)
             if self.gameOver:
                 pyxel.playm(1, loop=True)
             else:
                 pyxel.playm(0, loop=True)
-
-            self.bgmPlaying = True
 
         if len(self.enemyTanks) == 0:
             self.levelWin = True
@@ -103,117 +99,158 @@ class App:
                 self.init_game()
 
         if not self.gameOver:
-            if pyxel.btn(pyxel.KEY_W):
-                self.moveTank('n', self.mainTank)
-                pyxel.play(3, 10)
-            elif pyxel.btn(pyxel.KEY_A):
-                self.moveTank('w', self.mainTank)
-                pyxel.play(3, 10)
-            elif pyxel.btn(pyxel.KEY_S):
-                self.moveTank('s', self.mainTank)
-                pyxel.play(3, 10)
-            elif pyxel.btn(pyxel.KEY_D):
-                self.moveTank('e', self.mainTank)
-                pyxel.play(3, 10)
+            if pyxel.btnp(pyxel.KEY_P):
+                self.isPaused = not self.isPaused
+            if pyxel.btnp(pyxel.KEY_BACKQUOTE):
+                self.isPaused = True
+                self.enterCheatCode = True
+            if self.enterCheatCode:
+                for k in pyxel.__dict__.keys():
+                    if k.startswith('KEY_'):
+                        if pyxel.btnp(getattr(pyxel, k)) and k not in ["KEY_RETURN", "KEY_BACKSPACE", "KEY_BACKQUOTE"]:
+                            char = k[-1]
+                            self.input_str += char
 
-            if pyxel.btnp(pyxel.KEY_SPACE, hold=10, repeat=10):
-                if len([bul for bul in self.bulletList if bul.origin == self.mainTank.id]) <= 1:
-                    self.bulletList.append(bullet(self.mainTank.x + self.mainTank.width//2 - 1, self.mainTank.y + self.mainTank.height//2 - 1, self.mainTank.id, self.mainTank.facing))
-                pyxel.play(3, 6)
-        
-            for bul in self.bulletList:
-                if self.are_overlapping(bul, self.mainTank):
-                    if bul.origin != self.mainTank.id:
+                if pyxel.btnp(pyxel.KEY_RETURN):
+                    self.isPaused = False
+                    self.enterCheatCode = False
+
+                    if self.input_str in CHEAT_CODES and self.mainTank.lives < MAX_LIVES:
+                        self.mainTank.lives += 1
+
+                    self.input_str = ""
+                elif pyxel.btnp(pyxel.KEY_P):
+                    self.isPaused = False
+                    self.enterCheatCode = False
+                    self.input_str = ""
+                elif pyxel.btnp(pyxel.KEY_BACKSPACE):
+                    self.input_str = self.input_str[:-1]
+
+            if not self.isPaused:
+                if pyxel.btn(pyxel.KEY_W):
+                    self.moveTank('n', self.mainTank)
+                    pyxel.play(3, 10)
+                elif pyxel.btn(pyxel.KEY_A):
+                    self.moveTank('w', self.mainTank)
+                    pyxel.play(3, 10)
+                elif pyxel.btn(pyxel.KEY_S):
+                    self.moveTank('s', self.mainTank)
+                    pyxel.play(3, 10)
+                elif pyxel.btn(pyxel.KEY_D):
+                    self.moveTank('e', self.mainTank)
+                    pyxel.play(3, 10)
+
+                if pyxel.btnp(pyxel.KEY_SPACE, hold=10, repeat=10):
+                    if len([bul for bul in self.bulletList if bul.origin == self.mainTank.id]) <= 1:
+                        self.bulletList.append(bullet(self.mainTank.x + self.mainTank.width//2 - 1, self.mainTank.y + self.mainTank.height//2 - 1, self.mainTank.id, self.mainTank.facing))
+                    pyxel.play(3, 6)
+
+                for bul in self.bulletList:
+                    if self.are_overlapping(bul, self.mainTank):
+                        if bul.origin != self.mainTank.id:
+                            self.bulletList.remove(bul)
+                            pyxel.play(3, 5)
+                            self.mainTank.lives -= 1
+                            if self.mainTank.lives == 0:
+                                self.gameOver = True
+                                self.bgmPlaying = False
+                                self.gameOver = True
+                                level = 1
+                            else:
+                                self.mainTank = mainTank(0, 0, 'n', 'main', 0, lives=self.mainTank.lives) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0, lives=self.mainTank.lives)
+                        elif bul.origin == self.mainTank.id:
+                            if bul.mirrored:
+                                self.bulletList.remove(bul)
+                                pyxel.play(3, 5)
+                                self.mainTank.lives -= 1
+                                if self.mainTank.lives == 0:
+                                    self.gameOver = True
+                                    self.bgmPlaying = False
+                                    self.gameOver = True
+                                    level = 1
+                                else:
+                                    self.mainTank = mainTank(0, 0, 'n', 'main', 0, lives=self.mainTank.lives) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0, lives=self.mainTank.lives)
+
+                    for tank in self.enemyTanks:
+                        if self.are_overlapping(bul, tank):
+                            if bul.origin == self.mainTank.id:
+                                self.bulletList.remove(bul)
+                                self.enemyTanks.remove(tank)
+                                pyxel.play(3, 5)
+                    
+                    for obstacle in self.obstacles:
+                        if self.are_overlapping(bul, obstacle) and len(self.bulletList) != 0 and bul in self.bulletList:
+                            if obstacle.type == 'stone':
+                                self.bulletList.remove(bul)
+                            elif obstacle.type == 'brick':
+                                self.bulletList.remove(bul)
+                                self.obstacles.remove(obstacle)
+                                self.obstacles.append(obstacles(obstacle.x, obstacle.y, 'cracked'))
+                            elif obstacle.type == 'cracked':
+                                self.bulletList.remove(bul)
+                                self.obstacles.remove(obstacle)
+                                pyxel.play(3, 5)
+                            elif obstacle.type == 'mirror_ne':
+                                bul.mirrored = True
+                                if bul.direction == 'n':
+                                    bul.direction = 'e'
+                                elif bul.direction == 'e':
+                                    bul.direction = 'n'
+                                elif bul.direction == 'w':
+                                    bul.direction = 's'
+                                elif bul.direction == 's':
+                                    bul.direction = 'w'
+                            elif obstacle.type == 'mirror_se':
+                                bul.mirrored = True
+                                if bul.direction == 'n':
+                                    bul.direction = 'w'
+                                elif bul.direction == 'e':
+                                    bul.direction = 's'
+                                elif bul.direction == 'w':
+                                    bul.direction = 'n'
+                                elif bul.direction == 's':
+                                    bul.direction = 'e'
+                            elif obstacle.type == 'home':
+                                self.bulletList.remove(bul)
+                                self.obstacles.remove(obstacle)
+                                self.bgmPlaying = False
+                                self.gameOver = True
+                                level = 1
+                                pyxel.play(3, 5)
+                    
+                    for bul2 in [b for b in self.bulletList if b != bul]:
+                        if self.are_overlapping(bul, bul2) and bul in self.bulletList and bul2 in self.bulletList:
+                            self.bulletList.remove(bul)
+                            self.bulletList.remove(bul2)
+
+                    if bul.direction == 'n' and bul.y + BULLET_SIDE - BULLET_SPEED >= 0:
+                        bul.y -= BULLET_SPEED
+                    elif bul.direction == 'e' and bul.x + BULLET_SPEED <= WIDTH:
+                        bul.x +=  BULLET_SPEED
+                    elif bul.direction == 's' and bul.y + BULLET_SPEED <= HEIGHT:
+                        bul.y += BULLET_SPEED
+                    elif bul.direction == 'w' and bul.x + BULLET_SIDE - BULLET_SPEED >= 0:
+                        bul.x -= BULLET_SPEED
+                    else:
                         self.bulletList.remove(bul)
-                        pyxel.play(3, 5)
-                        LIVES -= 1
-                        self.mainTank = mainTank(0, 0, 'n', 'main', 0, lives=LIVES) if level != 1 else mainTank(3 * TANK_WIDTH, 0, 'n', 'main', 0, lives=LIVES)
-                    elif bul.origin == self.mainTank.id:
-                        if bul.mirrored:
-                            self.bulletList.remove(bul)
-                            self.gameOver = True
-                            self.bgmPlaying = False
-                            level = 1
-                            pyxel.play(3, 5)
 
                 for tank in self.enemyTanks:
-                    if self.are_overlapping(bul, tank):
-                        if bul.origin == self.mainTank.id:
-                            self.bulletList.remove(bul)
-                            self.enemyTanks.remove(tank)
-                            pyxel.play(3, 5)
-                
-                for obstacle in self.obstacles:
-                    if self.are_overlapping(bul, obstacle) and len(self.bulletList) != 0 and bul in self.bulletList:
-                        if obstacle.type == 'stone':
-                            self.bulletList.remove(bul)
-                        elif obstacle.type == 'brick':
-                            self.bulletList.remove(bul)
-                            self.obstacles.remove(obstacle)
-                            self.obstacles.append(obstacles(obstacle.x, obstacle.y, 'cracked'))
-                        elif obstacle.type == 'cracked':
-                            self.bulletList.remove(bul)
-                            self.obstacles.remove(obstacle)
-                            pyxel.play(3, 5)
-                        elif obstacle.type == 'mirror_ne':
-                            bul.mirrored = True
-                            if bul.direction == 'n':
-                                bul.direction = 'e'
-                            elif bul.direction == 'e':
-                                bul.direction = 'n'
-                            elif bul.direction == 'w':
-                                bul.direction = 's'
-                            elif bul.direction == 's':
-                                bul.direction = 'w'
-                        elif obstacle.type == 'mirror_se':
-                            bul.mirrored = True
-                            if bul.direction == 'n':
-                                bul.direction = 'w'
-                            elif bul.direction == 'e':
-                                bul.direction = 's'
-                            elif bul.direction == 'w':
-                                bul.direction = 'n'
-                            elif bul.direction == 's':
-                                bul.direction = 'e'
-                        elif obstacle.type == 'home':
-                            self.gameOver = True
-                            self.bgmPlaying = False
-                            level = 1
-                            pyxel.play(3, 5)
-                
-                for bul2 in [b for b in self.bulletList if b != bul]:
-                    if self.are_overlapping(bul, bul2):
-                        self.bulletList.remove(bul)
-                        self.bulletList.remove(bul2)
+                    self.moveTank(tank.facing, tank)
 
-                if bul.direction == 'n' and bul.y + BULLET_SIDE - BULLET_SPEED >= 0:
-                    bul.y -= BULLET_SPEED
-                elif bul.direction == 'e' and bul.x + BULLET_SPEED <= WIDTH:
-                    bul.x +=  BULLET_SPEED
-                elif bul.direction == 's' and bul.y + BULLET_SPEED <= HEIGHT:
-                    bul.y += BULLET_SPEED
-                elif bul.direction == 'w' and bul.x + BULLET_SIDE - BULLET_SPEED >= 0:
-                    bul.x -= BULLET_SPEED
-                else:
-                    self.bulletList.remove(bul)
+                if pyxel.frame_count % 15 == 0:
+                    for tank in self.enemyTanks:
+                        dir_choices = ('n', 's', 'e', 'w')
+                        tank.facing = choice(dir_choices)
 
-            for tank in self.enemyTanks:
-                self.moveTank(tank.facing, tank)
-
-            if pyxel.frame_count % 15 == 0:
-                for tank in self.enemyTanks:
-                    dir_choices = ('n', 's', 'e', 'w')
-                    tank.facing = choice(dir_choices)
-
-            if pyxel.frame_count % 7 == 0:
-                for tank in self.enemyTanks:
-                    coin_flip = choice((True, False))
-                    if coin_flip == True and len([bul for bul in self.bulletList if bul.origin != self.mainTank.id]) <= MAX_ENEMY_TANKS:
-                        self.bulletList.append(bullet(tank.x + tank.width//2 - 1, tank.y + tank.height//2 - 1, tank.id, tank.facing))
-
+                if pyxel.frame_count % 20 == 0:
+                    for tank in self.enemyTanks:
+                        for _ in range(randint(1, 3)):
+                            coin_flip = choice((True, False))
+                            if coin_flip == True and len([bul for bul in self.bulletList if bul.origin != self.mainTank.id]) <= MAX_ENEMY_TANKS:
+                                self.bulletList.append(bullet(tank.x + tank.width//2 - 1, tank.y + tank.height//2 - 1, tank.id, tank.facing))
         else:
             if pyxel.btn(pyxel.KEY_SPACE):
-                LIVES = 3
+                self.mainTank.lives = 3
                 self.init_game()
 
     def line_line_intersection(self, x1: int, y1: int, x2: int, y2: int, x3: int, y3: int, x4: int, y4: int) -> bool:
@@ -339,18 +376,35 @@ class App:
         pyxel.cls(0)
 
         if not self.gameOver:
-            for tank in self.enemyTanks:
-                self.drawEnemyTank(tank.x, tank.y, tank.facing)
+            pyxel.dither(1)
             for obstacle in self.obstacles:
                 if obstacle.type == 'water':
                     self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
             for bul in self.bulletList:
                 self.drawBullet(bul.x, bul.y)
+            for tank in self.enemyTanks:
+                self.drawEnemyTank(tank.x, tank.y, tank.facing)
             self.drawTank(self.mainTank.x, self.mainTank.y,self.mainTank.facing)
             for obstacle in self.obstacles:
                 if obstacle.type != 'water':
                     self.drawObstacle(obstacle.x, obstacle.y, obstacle.type)
             self.drawHearts(self.mainTank.lives)
+
+            if self.isPaused:
+                if self.enterCheatCode:
+                    pyxel.dither(0.15)
+                    pyxel.rect(0, 0, WIDTH, HEIGHT, 13)
+                    pyxel.dither(1)
+                    pyxel.rect(WIDTH//2-32, HEIGHT//2-17, 63, 10, 7)
+                    pyxel.rect(WIDTH//2-32, HEIGHT//2-7, 63, 10, 7)
+                    pyxel.text(WIDTH//2-30, HEIGHT//2-15, "ENTER CHEATCODE", 8)
+                    pyxel.text(WIDTH//2-30, HEIGHT//2-5, f"{self.input_str}", 8)
+                else:
+                    pyxel.dither(0.15)
+                    pyxel.rect(0, 0, WIDTH, HEIGHT, 13)
+                    pyxel.dither(1)
+                    pyxel.rect(WIDTH//2-32, HEIGHT//2-12, 60, 10, 7)
+                    pyxel.text(WIDTH//2-30, HEIGHT//2-10, "GAME IS PAUSED", 8)
         else:
             pyxel.text(WIDTH/2 - 20, HEIGHT/2 - 20, "GAME OVER", 5)
             pyxel.text(WIDTH/2 - 50, HEIGHT/2 - 10, "PRESS SPACE TO PLAY AGAIN", 5)
