@@ -19,7 +19,7 @@ In a map, enemy tanks will spawn periodically. They will move and shoot in rando
 
 > Yellow Tank - It behaves just like the player tank in that it moves with the same speed and shoot bullets normally.<br>Blue Tank - They move faster than Yellow Tanks. They shoot bullets normally.
 
-When the player gets hit by a bullet, be it from an enemy tank or themselves, they lose one life out of three and respawn back to their original position. When they go through and finish all levels or when they run out of lives, the game ends. They can restart the game by pressing the Spacebar. The player can restart the game anytime by pressing `Ctrl + R`.
+When the player gets hit by a bullet, be it from an enemy tank or themselves, they lose one life out of three and respawn back to their original position. When they go through and finish all levels or when they run out of lives, the game ends. They can restart the game by pressing the Spacebar. The player can also restart the game anytime by pressing `Ctrl + R`.
 
 ![image](https://github.com/norii7/cs12mp1NorLucas/assets/167980560/f2eca9a0-b296-4a67-9533-626502bdde69)
 
