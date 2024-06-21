@@ -1,1 +1,1 @@
-# manifesting passing grades this sem *[fingers crossed]*
+The project is a direct adaptation of the game "Battle City", a multi-directional shooter video game produced and published in 1985 by Namco. It utilizes the game engine "pyxel" by Takashi Kitao together with the Python programming language to frame its core mechanics.
