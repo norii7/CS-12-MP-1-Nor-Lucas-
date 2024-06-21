@@ -1,0 +1,23 @@
+W - move north
+A - move west
+S - move south
+D - move east
+SPACE - shoot
+P - pause game
+ctrl + R - restart game
+` - show cheat code input screen
+
+(when in cheat code input screen)
+ENTER - enter cheat code
+BACKSPACE - delete latest typed char
+
+------CHEAT CODES--------
++1 LIFE:
+UNOTIME, MORELIVE, SIRJBEST, TANKNICOLONEL
+
+------TANK TYPES---------
+YELLOW: slower, shoots 2-3 at a time
+BLUE: faster, shoots 1 bullet at a time
+
+------POWER-UPS----------
+ -> +1 tank speed
