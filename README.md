@@ -3,13 +3,8 @@
 ## Game Mechanics
 
 In the game, you play as a tank that must protect its home by shooting down and eliminating all the enemy tanks. The main tank is controlled by the following commands:
->>>
-W - Move up
-A - Move left
-S - Move down
-D - Move right
-Spacebar - Shoot bullet
->>>
+
+> W - Move up  A - Move left  S - Move down  D - Move right  Spacebar - Shoot bullet
 
 There are three maps in the game corresponding to three levels of increasing difficulty from level 1-3. In each of the layout, there are multiple types of obstacles that the player can interact with:
 ```
