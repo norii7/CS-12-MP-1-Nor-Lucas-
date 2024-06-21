@@ -1,14 +1,14 @@
-####The project is a direct adaptation of the game "Battle City", a multi-directional shooter video game produced and published in 1985 by Namco. It utilizes the game engine "pyxel" by Takashi Kitao together with the Python programming language to frame its core mechanics.
+#### The project is a direct adaptation of the game "Battle City", a multi-directional shooter video game produced and published in 1985 by Namco. It utilizes the game engine "pyxel" by Takashi Kitao together with the Python programming language to frame its core mechanics.
 
-##Game Mechanics
+## Game Mechanics
 
 In the game, you play as a tank that must protect its home by shooting down and eliminating all the enemy tanks. The main tank is controlled by the following commands:
 
-`W - Move up
-A - Move left
-S - Move down
-D - Move right
-Spacebar - Shoot bullet`
+`W - Move up`
+`A - Move left`
+`S - Move down`
+`D - Move right`
+`Spacebar - Shoot bullet`
 
 There are three maps in the game corresponding to three levels of increasing difficulty from level 1-3. In each of the layout, there are multiple types of obstacles that the player can interact with:
 
