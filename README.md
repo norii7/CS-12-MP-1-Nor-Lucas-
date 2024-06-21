@@ -21,7 +21,13 @@ In a map, enemy tanks will spawn periodically. They will move and shoot in rando
 
 When the player gets hit by a bullet, be it from an enemy tank or themselves, they lose one life out of three and respawn back to their original position. When they go through and finish all levels or when they run out of lives, the game ends. They can restart the game by pressing the Spacebar.
 
+![image](https://github.com/norii7/cs12mp1NorLucas/assets/167980560/f2eca9a0-b296-4a67-9533-626502bdde69)
+
+
 Other game features include a powerup, which when picked up, increases the speed of the player tank—and cheatcodes. To enter cheatcodes, simply press the backtick( &#96; ) key, type in your code and press enter. The following are the available cheatcodes: `["UNOTIME", "MORELIVE", "SIRJBEST", "TANKNICOLONEL"]`. Each code gives the player tank one more life if used.
+
+![image](https://github.com/norii7/cs12mp1NorLucas/assets/167980560/1774857a-99ce-43ca-9669-047c6a5b1049)
+
 
 ## Project Details
 
