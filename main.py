@@ -58,7 +58,6 @@ class App:
         pyxel.run(self.update, self.draw)
 
     def init_game(self):
-        pyxel.mouse(True)
         global level
         self.x = 0
         if level != 1:
@@ -102,7 +101,6 @@ class App:
             self.powerUPs.append(rand_powerup)
 
     def update(self):
-        print(pyxel.mouse_x, pyxel.mouse_y)
         global level
 
         self.x = (self.x + 1) % pyxel.width
