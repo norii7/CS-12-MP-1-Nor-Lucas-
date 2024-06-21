@@ -34,5 +34,5 @@ Other game features include a powerup, which when picked up, increases the speed
 Highest Phase Accomplished: Phase 3
 
 Contributions:
-Lucas = `[collision function, mirror functionality, enemy tank and bullet behavior, game over and replay functionality, bgm and sound effects, cheat codes]`
-Nor = `[obstacles and layouts, stage file, sprites and graphics, collision function, life mechanics, powerup, readme]`
+
+Lucas = `[collision function, mirror functionality, enemy tank and bullet behavior, game over and replay functionality, bgm and sound effects, cheat codes]`<br><br>Nor = `[obstacles and layouts, stage file, sprites and graphics, collision function, life mechanics, powerup, readme]`
