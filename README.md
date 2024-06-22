@@ -35,4 +35,6 @@ Highest Phase Accomplished: Phase 3
 
 Contributions:
 
-Lucas = `[collision function, mirror functionality, enemy tank and bullet behavior, game over and replay functionality, bgm and sound effects, cheat codes]`<br><br>Nor = `[obstacles and layouts, stage file, sprites and graphics, collision function, life mechanics, powerup, readme]`
+Lucas = `[collision function, mirror functionality, enemy tank and bullet behavior, game over and replay functionality, bgm and sound effects, cheat codes]`<br><br>Nor = `[obstacles and layouts, stage file, sprites and graphics, collision function, life mechanics, powerup, video gameplay, readme]`
+
+Video Gameplay Link: https://drive.google.com/file/d/1dLTYzEh06t6J-OwJlLIwHKtqRRBZme6e/view?usp=sharing
